@@ -15,8 +15,12 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+    if (!loading) {
+      if (!user) {
+        router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
+      } else if (!user.onboardingComplete && pathname !== '/onboarding') {
+        router.push('/onboarding');
+      }
     }
   }, [user, loading, router, pathname]);
 

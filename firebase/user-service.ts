@@ -17,6 +17,10 @@ export const createUserDocument = async (user: AppUser) => {
   if (!userSnap.exists()) {
     await setDoc(userRef, {
       ...user,
+      bio: user.bio ?? null,
+      avatarUrl: user.avatarUrl ?? user.photoURL ?? null,
+      timezone: user.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+      onboardingComplete: false,
       isNewUser: true,
       createdAt: serverTimestamp(),
       lastLogin: serverTimestamp(),

@@ -6,6 +6,10 @@ export interface AppUser {
   displayName: string | null;
   photoURL: string | null;
   username: string | null;
+  bio: string | null;
+  avatarUrl: string | null;
+  timezone: string | null;
+  onboardingComplete: boolean;
   provider: string;
   createdAt: Timestamp;
   lastLogin: Timestamp;

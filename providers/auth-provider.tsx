@@ -42,7 +42,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
-              username: firebaseUser.email?.split('@')[0] || null,
+              username: null,
+              bio: null,
+              avatarUrl: firebaseUser.photoURL,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              onboardingComplete: false,
               provider: firebaseUser.providerData[0]?.providerId || 'password',
               createdAt: Timestamp.now(), // Placeholder, serverTimestamp used in service
               lastLogin: Timestamp.now(), // Placeholder, serverTimestamp used in service
