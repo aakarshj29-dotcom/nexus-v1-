@@ -31,7 +31,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (!loading && profile) {
       if (profile.onboardingComplete) {
-        router.push('/dashboard');
+        router.replace('/dashboard');
       } else {
         setDisplayName(profile.displayName || '');
         if (profile.username) {
@@ -64,7 +64,7 @@ export default function OnboardingPage() {
         bio,
       });
 
-      router.push('/dashboard');
+      router.replace('/dashboard');
     } catch (error) {
       console.error('Onboarding failed:', error);
       alert('Something went wrong. Please try again.');

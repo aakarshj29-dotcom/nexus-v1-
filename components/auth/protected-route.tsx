@@ -19,7 +19,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       if (!user) {
         router.push(`/login?callbackUrl=${encodeURIComponent(pathname)}`);
       } else if (!user.onboardingComplete && pathname !== '/onboarding') {
-        router.push('/onboarding');
+        router.replace('/onboarding');
       }
     }
   }, [user, loading, router, pathname]);

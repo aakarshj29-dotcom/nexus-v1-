@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId)
+        && (request.resource.data.username == resource.data.username || !exists(/databases/$(database)/documents/usernames/$(request.resource.data.username)));
+    }
+
+    // Username reservation
+    match /usernames/{username} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && username.matches('^[a-z0-9_]{3,20}$')
+        && !username.matches('.*__.*')
+        && !username.matches('^_.*')
+        && !username.matches('.*_$');
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+  }
+}

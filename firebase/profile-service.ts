@@ -2,6 +2,7 @@ import {
   doc,
   getDoc,
   updateDoc,
+  deleteDoc,
   runTransaction,
 } from './firestore';
 import { db } from './firestore';
@@ -77,6 +78,16 @@ export const claimUsername = async (uid: string, username: string) => {
     // Update the user profile
     transaction.update(userRef, { username: normalizedUsername });
   });
+};
+
+/**
+ * Cleanup username reservation.
+ * Note: In production, this is best handled by a Firebase Cloud Function
+ * triggered on user deletion.
+ */
+export const releaseUsername = async (username: string) => {
+  const usernameRef = doc(db, USERNAMES_COLLECTION, username.toLowerCase());
+  await deleteDoc(usernameRef);
 };
 
 /**

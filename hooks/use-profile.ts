@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import {
-  getProfile,
   updateProfile as updateProfileService,
   uploadAvatar as uploadAvatarService,
   claimUsername as claimUsernameService,
   completeOnboarding as completeOnboardingService
 } from '@/firebase/profile-service';
+import { db, doc, onSnapshot } from '@/firebase/firestore';
 import { AppUser } from '@/types/auth';
+
+const USERS_COLLECTION = 'users';
 
 export const useProfile = () => {
   const { user: authUser } = useAuth();
@@ -17,42 +19,46 @@ export const useProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchProfile = useCallback(async () => {
+  useEffect(() => {
     if (!authUser?.uid) {
       setProfile(null);
       setLoading(false);
       return;
     }
 
-    try {
-      setLoading(true);
-      const data = await getProfile(authUser.uid);
-      setProfile(data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch profile'));
-    } finally {
-      setLoading(false);
-    }
-  }, [authUser?.uid]);
+    setLoading(true);
+    const userRef = doc(db, USERS_COLLECTION, authUser.uid);
 
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(userRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          setProfile(docSnap.data() as AppUser);
+        } else {
+          setProfile(null);
+        }
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.error('Profile listener error:', err);
+        setError(err instanceof Error ? err : new Error('Failed to fetch profile'));
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [authUser?.uid]);
 
   const updateProfile = async (data: Partial<AppUser>) => {
     if (!authUser?.uid) throw new Error('User not authenticated');
 
     try {
-      setLoading(true);
       await updateProfileService(authUser.uid, data);
-      await fetchProfile();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to update profile');
       setError(error);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -60,16 +66,12 @@ export const useProfile = () => {
     if (!authUser?.uid) throw new Error('User not authenticated');
 
     try {
-      setLoading(true);
       const url = await uploadAvatarService(authUser.uid, file);
-      await fetchProfile();
       return url;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to upload avatar');
       setError(error);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -77,15 +79,11 @@ export const useProfile = () => {
     if (!authUser?.uid) throw new Error('User not authenticated');
 
     try {
-      setLoading(true);
       await claimUsernameService(authUser.uid, username);
-      await fetchProfile();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to claim username');
       setError(error);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -93,15 +91,11 @@ export const useProfile = () => {
     if (!authUser?.uid) throw new Error('User not authenticated');
 
     try {
-      setLoading(true);
       await completeOnboardingService(authUser.uid, data);
-      await fetchProfile();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to complete onboarding');
       setError(error);
       throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -113,6 +107,5 @@ export const useProfile = () => {
     uploadAvatar,
     claimUsername,
     completeOnboarding,
-    refreshProfile: fetchProfile,
   };
 };
