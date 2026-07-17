@@ -13,11 +13,11 @@ export const useDashboard = () => {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!user) return;
+      if (!user?.uid) return;
 
       try {
         setLoading(true);
-        const result = await dashboardService.getDashboardData();
+        const result = await dashboardService.getDashboardData(user.uid);
         setData(result);
         setError(null);
       } catch (err) {
@@ -28,13 +28,13 @@ export const useDashboard = () => {
     };
 
     fetchDashboardData();
-  }, [user]);
+  }, [user?.uid]);
 
   const refresh = async () => {
-    if (!user) return;
+    if (!user?.uid) return;
     try {
       setLoading(true);
-      const result = await dashboardService.getDashboardData();
+      const result = await dashboardService.getDashboardData(user.uid);
       setData(result);
       setError(null);
     } catch (err) {

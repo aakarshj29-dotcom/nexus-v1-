@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useProject } from '@/hooks/use-project';
+import { useTasks } from '@/hooks/use-tasks';
 import { ProjectStatusBadge } from '@/components/projects/project-status-badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -11,6 +12,13 @@ import { EditProjectDialog } from '@/components/projects/edit-project-dialog';
 import { DeleteProjectDialog } from '@/components/projects/delete-project-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { CreateTaskDialog } from '@/components/tasks/create-task-dialog';
+import { EditTaskDialog } from '@/components/tasks/edit-task-dialog';
+import { TaskKanbanBoard } from '@/components/tasks/task-kanban-board';
+import { TaskList } from '@/components/tasks/task-list';
+import { Task, TaskStatus, TaskPriority, CreateTaskInput, UpdateTaskInput } from '@/types/task';
+import { Input } from '@/components/ui/input';
+
 import {
   ArrowLeft,
   Calendar,
@@ -32,6 +40,11 @@ import {
   Activity,
   AlertCircle,
   FileText,
+  LayoutGrid,
+  List,
+  Search,
+  Plus,
+  X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -53,7 +66,9 @@ interface PageProps {
 export default function ProjectDetailsPage({ params }: PageProps) {
   const router = useRouter();
   const { projectId } = React.use(params);
-  const { project, loading, error, updateProject, archiveProject, restoreProject, deleteProject } = useProject(projectId);
+
+  // Real-time project subscription
+  const { project, loading: projectLoading, error: projectError, updateProject, archiveProject, restoreProject, deleteProject } = useProject(projectId);
 
   // Active tab state
   const [activeTab, setActiveTab] = React.useState<'tasks' | 'team' | 'activity'>('tasks');
@@ -105,14 +120,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
   const completedCount = project?.completedTaskCount || 0;
   const progressPercent = taskCount > 0 ? Math.round((completedCount / taskCount) * 100) : 0;
 
-  // Format date correctly
+  // Format dates
   const formattedCreatedDate = React.useMemo(() => {
     if (!project?.createdAt) return '';
     let dateObj: Date | null = null;
     if (typeof project.createdAt === 'string') {
       dateObj = new Date(project.createdAt);
-    } else if ((project.createdAt as unknown as { toDate: () => Date }).toDate) {
-      dateObj = (project.createdAt as unknown as { toDate: () => Date }).toDate();
+    } else if (project.createdAt && typeof project.createdAt === 'object' && 'toDate' in project.createdAt) {
+      dateObj = (project.createdAt as { toDate: () => Date }).toDate();
     }
     return dateObj ? dateObj.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '';
   }, [project?.createdAt]);
@@ -122,13 +137,62 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     let dateObj: Date | null = null;
     if (typeof project.updatedAt === 'string') {
       dateObj = new Date(project.updatedAt);
-    } else if ((project.updatedAt as unknown as { toDate: () => Date }).toDate) {
-      dateObj = (project.updatedAt as unknown as { toDate: () => Date }).toDate();
+    } else if (project.updatedAt && typeof project.updatedAt === 'object' && 'toDate' in project.updatedAt) {
+      dateObj = (project.updatedAt as { toDate: () => Date }).toDate();
     }
     return dateObj ? dateObj.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : '';
   }, [project?.updatedAt]);
 
-  if (loading) {
+
+  // ==========================================
+  // TASKS MANAGEMENT integration
+  // ==========================================
+  const [viewMode, setViewMode] = React.useState<'kanban' | 'list'>('kanban');
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState<TaskStatus | ''>('');
+  const [priorityFilter, setPriorityFilter] = React.useState<TaskPriority | ''>('');
+  const [sortBy, setSortBy] = React.useState<'position' | 'dueDate' | 'title' | 'createdAt' | 'priority'>('position');
+
+  const {
+    tasks,
+    loading: tasksLoading,
+    error: tasksError,
+    createTask,
+    updateTask,
+    deleteTask: deleteTaskHandler,
+  } = useTasks({
+    projectId,
+    status: statusFilter || undefined,
+    priority: priorityFilter || undefined,
+    searchQuery,
+    sortBy,
+  });
+
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = React.useState(false);
+  const [editingTask, setEditingTask] = React.useState<Task | null>(null);
+
+  const handleCreateTask = async (input: CreateTaskInput) => {
+    return await createTask(input);
+  };
+
+  const handleUpdateTask = async (input: UpdateTaskInput) => {
+    if (!editingTask) return;
+    await updateTask(editingTask.id, input);
+    setEditingTask(null);
+  };
+
+  const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
+    await updateTask(taskId, { status: newStatus });
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (confirm('Are you sure you want to delete this task? This cannot be undone.')) {
+      await deleteTaskHandler(taskId);
+    }
+  };
+
+
+  if (projectLoading) {
     return (
       <div className="flex-1 p-4 md:p-6 space-y-6 max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-4">
@@ -161,14 +225,14 @@ export default function ProjectDetailsPage({ params }: PageProps) {
     );
   }
 
-  if (error || !project) {
+  if (projectError || !project) {
     return (
       <div className="flex-1 p-6 flex flex-col gap-4 max-w-4xl mx-auto">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error Loading Project Details</AlertTitle>
           <AlertDescription>
-            {error?.message || 'Project not found or access denied.'}
+            {projectError?.message || 'Project not found or access denied.'}
           </AlertDescription>
         </Alert>
         <Link href="/projects">
@@ -227,7 +291,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-6">
         <div className="flex items-center gap-4">
           <div
-            className="flex h-14 w-14 items-center justify-center rounded-xl text-white shadow-sm"
+            className="flex h-14 w-14 items-center justify-center rounded-xl text-white shadow-sm font-bold"
             style={{ backgroundColor: project.color || '#94a3b8' }}
           >
             <IconComponent className="h-7 w-7" />
@@ -248,7 +312,7 @@ export default function ProjectDetailsPage({ params }: PageProps) {
 
       {/* Grid Layout: Main info and Sidebar info */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Details & Tabs Placeholder */}
+        {/* Left Column: Details & Tabs */}
         <div className="lg:col-span-8 space-y-6">
           {/* Project Description Card */}
           <Card>
@@ -303,25 +367,161 @@ export default function ProjectDetailsPage({ params }: PageProps) {
               </button>
             </div>
 
-            {/* Tab content placeholder boxes */}
-            <div className="min-h-[260px] rounded-xl border bg-card text-card-foreground shadow-xs p-6 flex flex-col items-center justify-center text-center animate-fade-in">
+            {/* Tab content */}
+            <div className="min-h-[260px] rounded-xl border bg-card text-card-foreground shadow-xs p-4 md:p-6 animate-fade-in">
               {activeTab === 'tasks' && (
-                <div className="space-y-3 max-w-sm">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <CheckSquare className="h-5 w-5" />
+                <div className="space-y-4">
+                  {/* Filter Toolbar */}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-border/50">
+                    <div className="flex flex-1 flex-wrap items-center gap-2 max-w-xl">
+                      {/* Search */}
+                      <div className="relative flex-1 min-w-[180px]">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search tasks..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-9 h-9 text-xs"
+                        />
+                        {searchQuery && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-1 top-1 h-7 w-7 rounded-full"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Status select */}
+                      <select
+                        className="rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value as TaskStatus | '')}
+                      >
+                        <option value="">All Statuses</option>
+                        <option value="todo">To Do</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="blocked">Blocked</option>
+                        <option value="completed">Completed</option>
+                      </select>
+
+                      {/* Priority select */}
+                      <select
+                        className="rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                        value={priorityFilter}
+                        onChange={(e) => setPriorityFilter(e.target.value as TaskPriority | '')}
+                      >
+                        <option value="">All Priorities</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                      </select>
+
+                      {/* Sort select */}
+                      <select
+                        className="rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as 'position' | 'dueDate' | 'title' | 'createdAt' | 'priority')}
+                      >
+                        <option value="position">Kanban Position</option>
+                        <option value="dueDate">Due Date</option>
+                        <option value="title">Alphabetical</option>
+                        <option value="priority">Priority weight</option>
+                        <option value="createdAt">Created Date</option>
+                      </select>
+                    </div>
+
+                    {/* View mode toggle and Add Task button */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex border rounded-md p-0.5 bg-muted/50 shrink-0">
+                        <Button
+                          variant={viewMode === 'kanban' ? 'secondary' : 'ghost'}
+                          size="icon"
+                          onClick={() => setViewMode('kanban')}
+                          className="h-7 w-7 rounded-sm p-0"
+                          title="Kanban Board"
+                        >
+                          <LayoutGrid className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                          size="icon"
+                          onClick={() => setViewMode('list')}
+                          className="h-7 w-7 rounded-sm p-0"
+                          title="List View"
+                        >
+                          <List className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <Button size="sm" onClick={() => setIsCreateTaskOpen(true)} className="h-8 text-xs">
+                        <Plus className="mr-1.5 h-3.5 w-3.5" />
+                        Add Task
+                      </Button>
+                    </div>
                   </div>
-                  <h3 className="font-semibold text-base">Tasks system is coming soon</h3>
-                  <p className="text-sm text-muted-foreground">
-                    This module is reserved for Chapter 8. In the next chapter, you will be able to create, assign, schedule, and complete project tasks here.
-                  </p>
-                  <Button variant="outline" size="sm" className="mt-2" disabled>
-                    Add Task Placeholder
-                  </Button>
+
+                  {/* Tasks Container */}
+                  {tasksError ? (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Failed to load tasks</AlertTitle>
+                      <AlertDescription>{tasksError.message}</AlertDescription>
+                    </Alert>
+                  ) : tasksLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 py-4">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="space-y-3 rounded-xl border p-4 bg-card">
+                          <Skeleton className="h-4 w-1/3" />
+                          <Skeleton className="h-6 w-full" />
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-4 w-1/2" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : tasks.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center text-center py-12 px-4 border border-dashed rounded-xl bg-muted/10">
+                      <CheckSquare className="h-10 w-10 text-muted-foreground opacity-30 mb-3" />
+                      <h4 className="font-semibold text-sm">No tasks found</h4>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+                        {searchQuery || statusFilter || priorityFilter
+                          ? "No tasks match your current filters. Try relaxing your search criteria!"
+                          : "Get started by adding your first project task to organize your workspace."}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsCreateTaskOpen(true)}
+                        className="mt-4 text-xs h-8"
+                      >
+                        <Plus className="mr-1.5 h-3.5 w-3.5" />
+                        Add Your First Task
+                      </Button>
+                    </div>
+                  ) : viewMode === 'kanban' ? (
+                    <TaskKanbanBoard
+                      tasks={tasks}
+                      onEditClick={setEditingTask}
+                      onDeleteClick={handleDeleteTask}
+                      onStatusChange={handleStatusChange}
+                    />
+                  ) : (
+                    <TaskList
+                      tasks={tasks}
+                      onEditClick={setEditingTask}
+                      onDeleteClick={handleDeleteTask}
+                      onStatusChange={handleStatusChange}
+                    />
+                  )}
                 </div>
               )}
 
               {activeTab === 'team' && (
-                <div className="space-y-3 max-w-sm">
+                <div className="space-y-3 max-w-sm mx-auto text-center py-6">
                   <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <UserPlus className="h-5 w-5" />
                   </div>
@@ -329,14 +529,11 @@ export default function ProjectDetailsPage({ params }: PageProps) {
                   <p className="text-sm text-muted-foreground">
                     Future workspace integration will enable invite flows, real-time presence, role-based controls, and member sync for project boards.
                   </p>
-                  <Button variant="outline" size="sm" className="mt-2" disabled>
-                    Invite Teammates
-                  </Button>
                 </div>
               )}
 
               {activeTab === 'activity' && (
-                <div className="space-y-3 max-w-sm">
+                <div className="space-y-3 max-w-sm mx-auto text-center py-6">
                   <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Clock className="h-5 w-5" />
                   </div>
@@ -428,6 +625,22 @@ export default function ProjectDetailsPage({ params }: PageProps) {
         open={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}
         onConfirm={handleDeleteConfirm}
+      />
+
+      {/* Task Creation Modal */}
+      <CreateTaskDialog
+        open={isCreateTaskOpen}
+        onOpenChange={setIsCreateTaskOpen}
+        projectId={projectId}
+        onCreate={handleCreateTask}
+      />
+
+      {/* Task Editing Modal */}
+      <EditTaskDialog
+        task={editingTask}
+        open={editingTask !== null}
+        onOpenChange={(open) => !open && setEditingTask(null)}
+        onUpdate={handleUpdateTask}
       />
     </div>
   );
