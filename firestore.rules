@@ -46,6 +46,22 @@ service cloud.firestore {
       allow delete: if false; // soft-delete enforced (updated via field update)
     }
 
+    // Events collection
+    match /events/{eventId} {
+      allow read: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.ownerId == request.auth.uid
+      );
+      allow update: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid
+      );
+    }
+
     // Tasks collection
     match /tasks/{taskId} {
       // Helper to verify user has access to a project
