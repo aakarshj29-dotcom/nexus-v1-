@@ -47,7 +47,7 @@ const items = [
   },
   {
     title: 'Projects',
-    url: '/dashboard/projects',
+    url: '/projects',
     icon: FolderKanban,
   },
   {
