@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import * as React from 'react';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface CalendarPreviewProps {
   events: CalendarEvent[] | undefined;
@@ -53,7 +55,12 @@ export function CalendarPreview({ events, loading }: CalendarPreviewProps) {
           ) : (
             <p className="text-center text-xs text-muted-foreground py-4">No events scheduled today.</p>
           )}
-          <Button variant="outline" className="w-full">Open Calendar</Button>
+          <Link
+            href="/dashboard/calendar"
+            className={cn(buttonVariants({ variant: "outline" }), "w-full text-center block")}
+          >
+            Open Calendar
+          </Link>
         </div>
       </CardContent>
     </Card>

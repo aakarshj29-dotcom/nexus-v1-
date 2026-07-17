@@ -1,5 +1,6 @@
-import { DashboardData, Project as DashProject, Task as DashTask } from '@/types/dashboard';
+import { DashboardData, Project as DashProject, Task as DashTask, CalendarEvent as DashEvent } from '@/types/dashboard';
 import { db, collection, query, where, getDocs } from '@/firebase/firestore';
+import { calendarService } from '@/firebase/calendar-service';
 
 // Helper to convert Firestore timestamp or other date formats to ISO string
 function toIsoString(dateVal: unknown): string {
@@ -88,31 +89,30 @@ export const dashboardService = {
       // Sort tasks by dueDate/status/createdAt
       realTasks.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
-      // 3. Compute real stats
+      // 3. Fetch real upcoming calendar events (starting from today)
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const realEvents = await calendarService.getEventsInRange(userId, startOfToday.toISOString());
+
+      const dashEvents: DashEvent[] = realEvents.map((e) => ({
+        id: e.id,
+        title: e.title,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        type: e.type,
+        location: e.location,
+      }));
+
+      // 4. Compute real stats
       const totalTasksCount = realTasks.length;
       const completedTasksCount = realTasks.filter((t) => t.status === 'completed').length;
       const score = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
 
-      // 4. Construct response
+      // 5. Construct response
       return {
         projects: realProjects.slice(0, 5), // top 5 recent
         tasks: realTasks.slice(0, 10), // top 10 upcoming tasks
-        events: [
-          {
-            id: '1',
-            title: 'Weekly Sync',
-            startTime: new Date(new Date().setHours(10, 0)).toISOString(),
-            endTime: new Date(new Date().setHours(11, 0)).toISOString(),
-            type: 'meeting',
-          },
-          {
-            id: '2',
-            title: 'Project Deadline',
-            startTime: new Date(new Date().setHours(17, 0)).toISOString(),
-            endTime: new Date(new Date().setHours(18, 0)).toISOString(),
-            type: 'deadline',
-          },
-        ],
+        events: dashEvents.slice(0, 10), // top 10 upcoming events
         notes: [
           {
             id: '1',
