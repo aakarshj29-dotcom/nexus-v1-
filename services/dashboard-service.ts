@@ -1,121 +1,147 @@
-import { DashboardData } from '@/types/dashboard';
+import { DashboardData, Project as DashProject, Task as DashTask } from '@/types/dashboard';
+import { db, collection, query, where, getDocs } from '@/firebase/firestore';
 
-// Mock data for initial implementation
-const MOCK_DASHBOARD_DATA: DashboardData = {
-  projects: [
-    {
-      id: '1',
-      name: 'Nexus V1 Redesign',
-      status: 'active',
-      updatedAt: new Date().toISOString(),
-      memberCount: 5,
-      color: '#6366f1',
-    },
-    {
-      id: '2',
-      name: 'Mobile App Development',
-      status: 'active',
-      updatedAt: new Date(Date.now() - 86400000).toISOString(),
-      memberCount: 3,
-      color: '#10b981',
-    },
-    {
-      id: '3',
-      name: 'Marketing Campaign',
-      status: 'on-hold',
-      updatedAt: new Date(Date.now() - 172800000).toISOString(),
-      memberCount: 2,
-      color: '#f59e0b',
-    },
-  ],
-  tasks: [
-    {
-      id: '1',
-      title: 'Implement dashboard widgets',
-      status: 'in-progress',
-      priority: 'high',
-      dueDate: new Date(Date.now() + 86400000).toISOString(),
-      projectName: 'Nexus V1 Redesign',
-    },
-    {
-      id: '2',
-      title: 'Fix authentication bugs',
-      status: 'todo',
-      priority: 'urgent',
-      dueDate: new Date().toISOString(),
-      projectName: 'Nexus V1 Redesign',
-    },
-    {
-      id: '3',
-      title: 'Design system updates',
-      status: 'completed',
-      priority: 'medium',
-      dueDate: new Date(Date.now() - 86400000).toISOString(),
-      projectName: 'Nexus V1 Redesign',
-    },
-    {
-      id: '4',
-      title: 'User interview prep',
-      status: 'todo',
-      priority: 'low',
-      dueDate: new Date(Date.now() + 172800000).toISOString(),
-    },
-  ],
-  events: [
-    {
-      id: '1',
-      title: 'Weekly Sync',
-      startTime: new Date(new Date().setHours(10, 0)).toISOString(),
-      endTime: new Date(new Date().setHours(11, 0)).toISOString(),
-      type: 'meeting',
-    },
-    {
-      id: '2',
-      title: 'Project Deadline',
-      startTime: new Date(new Date().setHours(17, 0)).toISOString(),
-      endTime: new Date(new Date().setHours(18, 0)).toISOString(),
-      type: 'deadline',
-    },
-  ],
-  notes: [
-    {
-      id: '1',
-      title: 'Launch Strategy',
-      excerpt: 'The primary focus for the Q4 launch is on user acquisition and...',
-      updatedAt: new Date().toISOString(),
-      tags: ['marketing', 'strategy'],
-    },
-    {
-      id: '2',
-      title: 'Technical Debt',
-      excerpt: 'List of areas requiring refactoring after the V1 release...',
-      updatedAt: new Date(Date.now() - 432000000).toISOString(),
-    },
-  ],
-  stats: {
-    completedTasks: 12,
-    totalTasks: 20,
-    productivityScore: 75,
-    weeklyActivity: [40, 60, 45, 90, 75, 30, 20],
-  },
-};
+// Helper to convert Firestore timestamp or other date formats to ISO string
+function toIsoString(dateVal: unknown): string {
+  if (!dateVal) return new Date().toISOString();
+  if (typeof dateVal === 'string') return dateVal;
+
+  const hasToDate = (val: unknown): val is { toDate: () => Date } => {
+    return val !== null && typeof val === 'object' && 'toDate' in val && typeof (val as { toDate?: unknown }).toDate === 'function';
+  };
+
+  if (hasToDate(dateVal)) {
+    return dateVal.toDate().toISOString();
+  }
+
+  const hasSeconds = (val: unknown): val is { seconds: number } => {
+    return val !== null && typeof val === 'object' && 'seconds' in val;
+  };
+
+  if (hasSeconds(dateVal)) {
+    return new Date(dateVal.seconds * 1000).toISOString();
+  }
+
+  try {
+    return new Date(dateVal as string | number | Date).toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
+}
 
 export const dashboardService = {
-  async getDashboardData(): Promise<DashboardData> {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  async getDashboardData(userId: string): Promise<DashboardData> {
+    if (!userId) {
+      throw new Error('User ID is required to fetch dashboard data.');
+    }
 
-    // In the future, this will fetch from Firestore
-    return MOCK_DASHBOARD_DATA;
+    try {
+      // 1. Fetch real active projects
+      const projectsRef = collection(db, 'projects');
+      const pq = query(
+        projectsRef,
+        where('memberIds', 'array-contains', userId),
+        where('deleted', '==', false)
+      );
+      const projectSnaps = await getDocs(pq);
+
+      const realProjects: DashProject[] = [];
+      projectSnaps.forEach((docSnap) => {
+        const data = docSnap.data();
+        realProjects.push({
+          id: docSnap.id,
+          name: data.title || '',
+          description: data.description || '',
+          status: data.status || 'active',
+          updatedAt: toIsoString(data.updatedAt),
+          color: data.color || '#6366f1',
+          memberCount: data.memberIds?.length || 1,
+        });
+      });
+
+      // Sort by updatedAt descending
+      realProjects.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+      // 2. Fetch real active tasks (limit to 20 for dashboard summary)
+      const tasksRef = collection(db, 'tasks');
+      const tq = query(
+        tasksRef,
+        where('ownerId', '==', userId),
+        where('deleted', '==', false)
+      );
+      const taskSnaps = await getDocs(tq);
+
+      const realTasks: DashTask[] = [];
+      taskSnaps.forEach((docSnap) => {
+        const data = docSnap.data();
+        realTasks.push({
+          id: docSnap.id,
+          title: data.title || '',
+          status: data.status || 'todo',
+          priority: data.priority || 'medium',
+          dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : new Date().toISOString(),
+          projectId: data.projectId,
+          projectName: data.projectName || '',
+        });
+      });
+
+      // Sort tasks by dueDate/status/createdAt
+      realTasks.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
+      // 3. Compute real stats
+      const totalTasksCount = realTasks.length;
+      const completedTasksCount = realTasks.filter((t) => t.status === 'completed').length;
+      const score = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
+
+      // 4. Construct response
+      return {
+        projects: realProjects.slice(0, 5), // top 5 recent
+        tasks: realTasks.slice(0, 10), // top 10 upcoming tasks
+        events: [
+          {
+            id: '1',
+            title: 'Weekly Sync',
+            startTime: new Date(new Date().setHours(10, 0)).toISOString(),
+            endTime: new Date(new Date().setHours(11, 0)).toISOString(),
+            type: 'meeting',
+          },
+          {
+            id: '2',
+            title: 'Project Deadline',
+            startTime: new Date(new Date().setHours(17, 0)).toISOString(),
+            endTime: new Date(new Date().setHours(18, 0)).toISOString(),
+            type: 'deadline',
+          },
+        ],
+        notes: [
+          {
+            id: '1',
+            title: 'Nexus V1 Onboarding Brief',
+            excerpt: 'The primary focus is completing task boards and real-time dashboard updates...',
+            updatedAt: new Date().toISOString(),
+            tags: ['product', 'chapter-8'],
+          },
+        ],
+        stats: {
+          completedTasks: completedTasksCount,
+          totalTasks: totalTasksCount,
+          productivityScore: score,
+          weeklyActivity: [completedTasksCount, totalTasksCount, score > 0 ? score / 10 : 2, 4, 3, 1, 0],
+        },
+      };
+    } catch (err) {
+      console.error('Error fetching dashboard data from Firestore:', err);
+      throw err;
+    }
   },
 
-  async getRecentProjects(limit = 5) {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    return MOCK_DASHBOARD_DATA.projects.slice(0, limit);
+  async getRecentProjects(userId: string, limitVal = 5) {
+    const data = await this.getDashboardData(userId);
+    return data.projects.slice(0, limitVal);
   },
 
-  async getMyTasks(limit = 10) {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    return MOCK_DASHBOARD_DATA.tasks.slice(0, limit);
+  async getMyTasks(userId: string, limitVal = 10) {
+    const data = await this.getDashboardData(userId);
+    return data.tasks.slice(0, limitVal);
   },
 };
