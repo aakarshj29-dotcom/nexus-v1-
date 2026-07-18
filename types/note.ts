@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase/firestore';
 export interface Note {
   id: string;
   ownerId: string;
+  workspaceId?: string;
   title: string;
   content: string; // HTML markup or JSON string representing rich text
   excerpt: string; // Plain-text preview snippet
@@ -19,6 +20,7 @@ export interface CreateNoteInput {
   content?: string;
   excerpt?: string;
   tags?: string[];
+  workspaceId?: string;
 }
 
 export interface UpdateNoteInput {
@@ -29,4 +31,5 @@ export interface UpdateNoteInput {
   favorite?: boolean;
   deleted?: boolean;
   tags?: string[];
+  workspaceId?: string;
 }

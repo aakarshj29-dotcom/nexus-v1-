@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { useWorkspaces } from '@/hooks/use-workspaces';
 import { Project, CreateProjectInput, UpdateProjectInput } from '@/types/project';
 import {
   createProject as createProjectService,
@@ -15,19 +16,22 @@ import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot,
 } from '@/firebase/firestore';
 
-export function useProjects(workspaceId: string = 'default-workspace') {
+export function useProjects(workspaceIdOverride?: string) {
   const { user } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const { activeWorkspace } = useWorkspaces();
+  const [rawProjects, setRawProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const targetWorkspaceId = workspaceIdOverride || activeWorkspace?.id;
+  const isPersonalTarget = workspaceIdOverride ? false : activeWorkspace?.isPersonal;
+
   useEffect(() => {
     if (!user?.uid) {
-      setProjects([]);
+      setRawProjects([]);
       setLoading(false);
       return;
     }
@@ -36,10 +40,8 @@ export function useProjects(workspaceId: string = 'default-workspace') {
 
     const q = query(
       collection(db, 'projects'),
-      where('workspaceId', '==', workspaceId),
       where('memberIds', 'array-contains', user.uid),
-      where('deleted', '==', false),
-      orderBy('createdAt', 'desc')
+      where('deleted', '==', false)
     );
 
     const unsubscribe = onSnapshot(
@@ -52,7 +54,7 @@ export function useProjects(workspaceId: string = 'default-workspace') {
             ...docSnap.data(),
           } as Project);
         });
-        setProjects(fetchedProjects);
+        setRawProjects(fetchedProjects);
         setLoading(false);
         setError(null);
       },
@@ -64,11 +66,51 @@ export function useProjects(workspaceId: string = 'default-workspace') {
     );
 
     return () => unsubscribe();
-  }, [user?.uid, workspaceId]);
+  }, [user?.uid]);
+
+  // In-memory workspace filtering and sorting to ensure compatibility, speed, and zero composite index issues!
+  const projects = useMemo(() => {
+    let list = [...rawProjects];
+
+    // Filter by workspace
+    if (targetWorkspaceId) {
+      if (isPersonalTarget) {
+        // If personal workspace, show personal data: where workspaceId is null, empty, 'default-workspace', or matches personal workspace id
+        list = list.filter(
+          (p) =>
+            !p.workspaceId ||
+            p.workspaceId === 'default-workspace' ||
+            p.workspaceId === targetWorkspaceId
+        );
+      } else {
+        // Show team workspace data
+        list = list.filter((p) => p.workspaceId === targetWorkspaceId);
+      }
+    } else {
+      // Default fallback if activeWorkspace is still loading
+      list = list.filter((p) => !p.workspaceId || p.workspaceId === 'default-workspace');
+    }
+
+    // Sort by createdAt descending
+    list.sort((a, b) => {
+      const getMs = (dateVal: unknown) => {
+        if (!dateVal) return 0;
+        if (typeof dateVal === 'string') return new Date(dateVal).getTime();
+        if (typeof dateVal === 'object' && 'seconds' in dateVal) {
+          return (dateVal as { seconds: number }).seconds * 1000;
+        }
+        return new Date(dateVal as Date).getTime();
+      };
+      return getMs(b.createdAt) - getMs(a.createdAt);
+    });
+
+    return list;
+  }, [rawProjects, targetWorkspaceId, isPersonalTarget]);
 
   const createProject = async (input: CreateProjectInput) => {
     if (!user?.uid) throw new Error('User must be authenticated.');
     try {
+      const workspaceId = targetWorkspaceId || 'default-workspace';
       return await createProjectService(user.uid, { ...input, workspaceId });
     } catch (err) {
       const errorObj = err instanceof Error ? err : new Error('Failed to create project');

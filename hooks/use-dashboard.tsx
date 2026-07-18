@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { DashboardData } from '@/types/dashboard';
 import { dashboardService } from '@/services/dashboard-service';
 import { useAuth } from './use-auth';
+import { useWorkspaces } from './use-workspaces';
 
 export const useDashboard = () => {
   const { user } = useAuth();
+  const { activeWorkspace } = useWorkspaces();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -17,7 +19,11 @@ export const useDashboard = () => {
 
       try {
         setLoading(true);
-        const result = await dashboardService.getDashboardData(user.uid);
+        const result = await dashboardService.getDashboardData(
+          user.uid,
+          activeWorkspace?.id,
+          activeWorkspace?.isPersonal
+        );
         setData(result);
         setError(null);
       } catch (err) {
@@ -28,13 +34,17 @@ export const useDashboard = () => {
     };
 
     fetchDashboardData();
-  }, [user?.uid]);
+  }, [user?.uid, activeWorkspace?.id, activeWorkspace?.isPersonal]);
 
   const refresh = async () => {
     if (!user?.uid) return;
     try {
       setLoading(true);
-      const result = await dashboardService.getDashboardData(user.uid);
+      const result = await dashboardService.getDashboardData(
+        user.uid,
+        activeWorkspace?.id,
+        activeWorkspace?.isPersonal
+      );
       setData(result);
       setError(null);
     } catch (err) {

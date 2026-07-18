@@ -4,6 +4,7 @@ import * as React from 'react'
 import { ThemeProvider } from './theme-provider'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from './auth-provider'
+import { WorkspaceProvider } from '@/hooks/use-workspaces'
 
 interface RootProvidersProps {
   children: React.ReactNode
@@ -18,7 +19,9 @@ export function RootProviders({ children }: RootProvidersProps) {
       disableTransitionOnChange
     >
       <AuthProvider>
-        <TooltipProvider delay={0}>{children}</TooltipProvider>
+        <WorkspaceProvider>
+          <TooltipProvider delay={0}>{children}</TooltipProvider>
+        </WorkspaceProvider>
       </AuthProvider>
     </ThemeProvider>
   )

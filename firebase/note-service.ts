@@ -36,6 +36,7 @@ export async function createNote(userId: string, input?: CreateNoteInput): Promi
 
   const noteData = {
     ownerId: userId,
+    workspaceId: input?.workspaceId || null,
     title,
     content: input?.content || '',
     excerpt: input?.excerpt || '',

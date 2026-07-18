@@ -31,7 +31,7 @@ function toIsoString(dateVal: unknown): string {
 }
 
 export const dashboardService = {
-  async getDashboardData(userId: string): Promise<DashboardData> {
+  async getDashboardData(userId: string, workspaceId?: string, isPersonal: boolean = false): Promise<DashboardData> {
     if (!userId) {
       throw new Error('User ID is required to fetch dashboard data.');
     }
@@ -46,9 +46,27 @@ export const dashboardService = {
       );
       const projectSnaps = await getDocs(pq);
 
+      const allProjectWorkspaceMap = new Map<string, string>();
       const realProjects: DashProject[] = [];
+
       projectSnaps.forEach((docSnap) => {
         const data = docSnap.data();
+        const wsId = data.workspaceId || 'default-workspace';
+        allProjectWorkspaceMap.set(docSnap.id, wsId);
+
+        // Filter by workspace
+        if (workspaceId) {
+          if (isPersonal) {
+            if (wsId !== 'default-workspace' && wsId !== workspaceId) {
+              return;
+            }
+          } else {
+            if (wsId !== workspaceId) {
+              return;
+            }
+          }
+        }
+
         realProjects.push({
           id: docSnap.id,
           name: data.title || '',
@@ -75,13 +93,29 @@ export const dashboardService = {
       const realTasks: DashTask[] = [];
       taskSnaps.forEach((docSnap) => {
         const data = docSnap.data();
+        const pId = data.projectId;
+        const taskWsId = allProjectWorkspaceMap.get(pId) || 'default-workspace';
+
+        // Filter by workspace
+        if (workspaceId) {
+          if (isPersonal) {
+            if (taskWsId !== 'default-workspace' && taskWsId !== workspaceId) {
+              return;
+            }
+          } else {
+            if (taskWsId !== workspaceId) {
+              return;
+            }
+          }
+        }
+
         realTasks.push({
           id: docSnap.id,
           title: data.title || '',
           status: data.status || 'todo',
           priority: data.priority || 'medium',
           dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : new Date().toISOString(),
-          projectId: data.projectId,
+          projectId: pId,
           projectName: data.projectName || '',
         });
       });

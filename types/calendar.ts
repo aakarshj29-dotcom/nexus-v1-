@@ -10,6 +10,7 @@ export interface CalendarEvent {
   type: CalendarEventType;
   location?: string;
   projectId?: string;
+  workspaceId?: string;
   createdAt: string; // ISO 8601 UTC string
   updatedAt: string; // ISO 8601 UTC string
 }
@@ -22,6 +23,7 @@ export interface CreateCalendarEventInput {
   type: CalendarEventType;
   location?: string;
   projectId?: string;
+  workspaceId?: string;
 }
 
 export interface UpdateCalendarEventInput {
@@ -32,6 +34,7 @@ export interface UpdateCalendarEventInput {
   type?: CalendarEventType;
   location?: string;
   projectId?: string;
+  workspaceId?: string;
 }
 
 export type UnifiedCalendarItemType = CalendarEventType | 'task' | 'project_deadline';
