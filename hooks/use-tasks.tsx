@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { useWorkspaces } from '@/hooks/use-workspaces';
 import { Task, CreateTaskInput, UpdateTaskInput, TaskStatus, TaskPriority } from '@/types/task';
+import { Project } from '@/types/project';
 import {
   createTask as createTaskService,
   updateTask as updateTaskService,
@@ -21,12 +23,48 @@ interface UseTasksOptions {
 
 export function useTasks(options: UseTasksOptions = {}) {
   const { user } = useAuth();
+  const { activeWorkspace } = useWorkspaces();
   const [rawTasks, setRawTasks] = useState<Task[]>([]);
+  const [rawProjects, setRawProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const { projectId, status, priority, searchQuery, sortBy = 'position', sortOrder = 'asc' } = options;
 
+  // Subscribe to Projects to build a Project -> Workspace map
+  useEffect(() => {
+    if (!user?.uid) {
+      setRawProjects([]);
+      return;
+    }
+
+    const pq = query(
+      collection(db, 'projects'),
+      where('memberIds', 'array-contains', user.uid),
+      where('deleted', '==', false)
+    );
+
+    const unsubscribe = onSnapshot(
+      pq,
+      (snapshot) => {
+        const list: Project[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({
+            id: docSnap.id,
+            ...docSnap.data(),
+          } as Project);
+        });
+        setRawProjects(list);
+      },
+      (err) => {
+        console.error('Projects subscription in useTasks error:', err);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user?.uid]);
+
+  // Subscribe to Tasks
   useEffect(() => {
     if (!user?.uid) {
       setRawTasks([]);
@@ -41,7 +79,6 @@ export function useTasks(options: UseTasksOptions = {}) {
       where('deleted', '==', false)
     );
 
-    // If projectId is provided, filter by it. Otherwise, get all tasks created by the user.
     if (projectId) {
       q = query(
         collection(db, 'tasks'),
@@ -80,9 +117,36 @@ export function useTasks(options: UseTasksOptions = {}) {
     return () => unsubscribe();
   }, [user?.uid, projectId]);
 
-  // In-memory Filtering and Sorting for high performance and zero-index dependency!
+  // Create Project ID -> Workspace ID Map
+  const projectWorkspaceMap = useMemo(() => {
+    const map = new Map<string, string | undefined>();
+    rawProjects.forEach((p) => {
+      map.set(p.id, p.workspaceId);
+    });
+    return map;
+  }, [rawProjects]);
+
+  // In-memory Filtering, Workspace scoping and Sorting
   const tasks = useMemo(() => {
     let filtered = [...rawTasks];
+
+    // Filter by Active Workspace
+    if (activeWorkspace) {
+      const activeWsId = activeWorkspace.id;
+      if (activeWorkspace.isPersonal) {
+        // Personal Workspace: show where parent project's workspaceId is null, 'default-workspace', or activeWorkspace.id
+        filtered = filtered.filter((t) => {
+          const wsId = projectWorkspaceMap.get(t.projectId);
+          return !wsId || wsId === 'default-workspace' || wsId === activeWsId;
+        });
+      } else {
+        // Team Workspace: only show tasks belonging to projects of this team workspace
+        filtered = filtered.filter((t) => {
+          const wsId = projectWorkspaceMap.get(t.projectId);
+          return wsId === activeWsId;
+        });
+      }
+    }
 
     // Filter by status
     if (status) {
@@ -137,7 +201,7 @@ export function useTasks(options: UseTasksOptions = {}) {
     });
 
     return filtered;
-  }, [rawTasks, status, priority, searchQuery, sortBy, sortOrder]);
+  }, [rawTasks, activeWorkspace, projectWorkspaceMap, status, priority, searchQuery, sortBy, sortOrder]);
 
   const createTask = async (input: CreateTaskInput) => {
     if (!user?.uid) throw new Error('User must be authenticated.');

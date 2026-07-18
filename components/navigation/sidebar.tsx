@@ -39,6 +39,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useProfile } from '@/hooks/use-profile'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { WorkspaceSwitcher } from '@/components/workspace/workspace-switcher'
 
 const items = [
   {
@@ -101,6 +102,7 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        <WorkspaceSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
