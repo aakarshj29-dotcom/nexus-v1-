@@ -92,5 +92,21 @@ service cloud.firestore {
 
       allow delete: if false; // soft-delete enforced
     }
+
+    // Notes collection
+    match /notes/{noteId} {
+      allow read: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.ownerId == request.auth.uid
+      );
+      allow update: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid
+      );
+    }
   }
 }
