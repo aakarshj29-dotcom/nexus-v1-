@@ -1,4 +1,4 @@
-import { DashboardData, Project as DashProject, Task as DashTask, CalendarEvent as DashEvent } from '@/types/dashboard';
+import { DashboardData, Project as DashProject, Task as DashTask, CalendarEvent as DashEvent, Note } from '@/types/dashboard';
 import { db, collection, query, where, getDocs } from '@/firebase/firestore';
 import { calendarService } from '@/firebase/calendar-service';
 
@@ -103,25 +103,59 @@ export const dashboardService = {
         location: e.location,
       }));
 
-      // 4. Compute real stats
+      // 4. Fetch real notes (Recent & Pinned)
+      let realNotes: Note[] = [];
+      if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+        realNotes = [
+          {
+            id: 'mock-note-1',
+            title: 'Welcome to Nexus Notes V1 🚀',
+            excerpt: 'Welcome to Nexus Notes V1. Nexus Notes is a modern, rich-text document module designed for fast, focused editing and productivity.',
+            updatedAt: new Date().toISOString(),
+            tags: ['intro', 'nexus-v1'],
+          },
+          {
+            id: 'mock-note-2',
+            title: 'Project Aurora Specifications 🌌',
+            excerpt: 'Project Aurora. This note serves as the main specifications reference for Project Aurora.',
+            updatedAt: new Date().toISOString(),
+            tags: ['tech', 'specs'],
+          }
+        ];
+      } else {
+        const notesRef = collection(db, 'notes');
+        const nq = query(
+          notesRef,
+          where('ownerId', '==', userId),
+          where('deleted', '==', false)
+        );
+        const noteSnaps = await getDocs(nq);
+        noteSnaps.forEach((docSnap) => {
+          const data = docSnap.data();
+          realNotes.push({
+            id: docSnap.id,
+            title: data.title || 'Untitled Note',
+            excerpt: data.excerpt || '',
+            updatedAt: toIsoString(data.updatedAt),
+            tags: data.tags || [],
+          });
+        });
+      }
+
+      // Sort notes so pinned ones are at the top, then by updatedAt descending
+      realNotes.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+      // 5. Compute real stats
       const totalTasksCount = realTasks.length;
       const completedTasksCount = realTasks.filter((t) => t.status === 'completed').length;
       const score = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
 
-      // 5. Construct response
+      // 6. Construct response
       return {
         projects: realProjects.slice(0, 5), // top 5 recent
         tasks: realTasks.slice(0, 10), // top 10 upcoming tasks
         events: dashEvents.slice(0, 10), // top 10 upcoming events
-        notes: [
-          {
-            id: '1',
-            title: 'Nexus V1 Onboarding Brief',
-            excerpt: 'The primary focus is completing task boards and real-time dashboard updates...',
-            updatedAt: new Date().toISOString(),
-            tags: ['product', 'chapter-8'],
-          },
-        ],
+        notes: realNotes.slice(0, 5), // top 5 recent notes
         stats: {
           completedTasks: completedTasksCount,
           totalTasks: totalTasksCount,

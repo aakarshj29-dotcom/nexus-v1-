@@ -23,6 +23,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+      setUser({
+        uid: 'mock-user-123',
+        email: 'jules@nexus.com',
+        displayName: 'Jules Nexus',
+        photoURL: null,
+        username: 'jules_nexus',
+        bio: 'Senior Software Engineer',
+        avatarUrl: null,
+        timezone: 'UTC',
+        onboardingComplete: true,
+        provider: 'password',
+        createdAt: Timestamp.now(),
+        lastLogin: Timestamp.now(),
+      });
+      setLoading(false);
+      return;
+    }
+
     if (!auth) {
       setLoading(false);
       return;

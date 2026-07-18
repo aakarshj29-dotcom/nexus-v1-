@@ -11,6 +11,8 @@ interface NotesPreviewProps {
   loading: boolean;
 }
 
+import Link from 'next/link';
+
 export function NotesPreview({ notes, loading }: NotesPreviewProps) {
   if (loading) {
     return (
@@ -31,20 +33,23 @@ export function NotesPreview({ notes, loading }: NotesPreviewProps) {
     <Card className="flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle>Recent Notes</CardTitle>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <Plus className="h-4 w-4" />
-        </Button>
+        <Link href="/dashboard/notes">
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </Link>
       </CardHeader>
       <CardContent className="flex-1 space-y-4">
         {notes && notes.length > 0 ? (
           notes.map((note) => (
-            <div
+            <Link
               key={note.id}
-              className="group relative flex flex-col gap-1 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+              href="/dashboard/notes"
+              className="group relative flex flex-col gap-1 rounded-lg border p-3 transition-colors hover:bg-muted/50 block"
             >
               <h4 className="text-sm font-medium">{note.title}</h4>
               <p className="line-clamp-2 text-xs text-muted-foreground">
-                {note.excerpt}
+                {note.excerpt || 'No content yet.'}
               </p>
               <div className="mt-2 flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground">
@@ -56,7 +61,7 @@ export function NotesPreview({ notes, loading }: NotesPreviewProps) {
                   ))}
                 </div>
               </div>
-            </div>
+            </Link>
           ))
         ) : (
           <div className="flex h-[150px] flex-col items-center justify-center text-center">
@@ -64,7 +69,9 @@ export function NotesPreview({ notes, loading }: NotesPreviewProps) {
             <p className="text-sm text-muted-foreground">No notes found.</p>
           </div>
         )}
-        <Button variant="outline" className="w-full">View All Notes</Button>
+        <Link href="/dashboard/notes" className="block w-full">
+          <Button variant="outline" className="w-full">View All Notes</Button>
+        </Link>
       </CardContent>
     </Card>
   );

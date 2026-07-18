@@ -12,6 +12,7 @@ import {
   ChevronUp,
   User,
   HelpCircle,
+  FileText,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -54,6 +55,11 @@ const items = [
     title: 'Tasks',
     url: '/dashboard/tasks',
     icon: Users, // Changed to reflect tasks or similar
+  },
+  {
+    title: 'Notes',
+    url: '/dashboard/notes',
+    icon: FileText,
   },
   {
     title: 'Messages',
