@@ -8,6 +8,7 @@ import { CalendarPreview } from '@/components/dashboard/calendar-preview';
 import { NotesPreview } from '@/components/dashboard/notes-preview';
 import { ProductivitySummary } from '@/components/dashboard/productivity-summary';
 import { QuickActions } from '@/components/dashboard/quick-actions';
+import { RecentChatsWidget } from '@/components/dashboard/recent-chats-widget';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,7 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-6 lg:col-span-4">
           <ProductivitySummary stats={data?.stats} loading={loading} />
           <CalendarPreview events={data?.events} loading={loading} />
+          <RecentChatsWidget />
         </div>
       </div>
     </div>
