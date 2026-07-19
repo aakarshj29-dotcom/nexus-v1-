@@ -20,6 +20,32 @@ export const useProfile = () => {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+      const savedMock = localStorage.getItem('mock_user_profile');
+      if (savedMock) {
+        setProfile(JSON.parse(savedMock));
+      } else {
+        const initialMock: AppUser = {
+          uid: 'mock-user-123',
+          email: 'jules@nexus.com',
+          displayName: 'Jules Nexus',
+          photoURL: null,
+          username: 'jules_nexus',
+          bio: 'Senior Software Engineer',
+          avatarUrl: null,
+          timezone: 'UTC',
+          onboardingComplete: true,
+          provider: 'password',
+          createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 } as any,
+          lastLogin: { seconds: Date.now() / 1000, nanoseconds: 0 } as any,
+        };
+        setProfile(initialMock);
+        localStorage.setItem('mock_user_profile', JSON.stringify(initialMock));
+      }
+      setLoading(false);
+      return;
+    }
+
     if (!authUser?.uid) {
       setProfile(null);
       setLoading(false);
@@ -51,6 +77,14 @@ export const useProfile = () => {
   }, [authUser?.uid]);
 
   const updateProfile = async (data: Partial<AppUser>) => {
+    if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+      const current = profile || { uid: 'mock-user-123' };
+      const updated = { ...current, ...data };
+      setProfile(updated as AppUser);
+      localStorage.setItem('mock_user_profile', JSON.stringify(updated));
+      return;
+    }
+
     if (!authUser?.uid) throw new Error('User not authenticated');
 
     try {
@@ -63,6 +97,15 @@ export const useProfile = () => {
   };
 
   const uploadAvatar = async (file: File) => {
+    if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+      const dummyUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop';
+      const current = profile || { uid: 'mock-user-123' };
+      const updated = { ...current, avatarUrl: dummyUrl };
+      setProfile(updated as AppUser);
+      localStorage.setItem('mock_user_profile', JSON.stringify(updated));
+      return dummyUrl;
+    }
+
     if (!authUser?.uid) throw new Error('User not authenticated');
 
     try {
@@ -76,6 +119,14 @@ export const useProfile = () => {
   };
 
   const claimUsername = async (username: string) => {
+    if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+      const current = profile || { uid: 'mock-user-123' };
+      const updated = { ...current, username };
+      setProfile(updated as AppUser);
+      localStorage.setItem('mock_user_profile', JSON.stringify(updated));
+      return;
+    }
+
     if (!authUser?.uid) throw new Error('User not authenticated');
 
     try {
@@ -88,6 +139,14 @@ export const useProfile = () => {
   };
 
   const completeOnboarding = async (data: Partial<AppUser>) => {
+    if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
+      const current = profile || { uid: 'mock-user-123' };
+      const updated = { ...current, ...data, onboardingComplete: true };
+      setProfile(updated as AppUser);
+      localStorage.setItem('mock_user_profile', JSON.stringify(updated));
+      return;
+    }
+
     if (!authUser?.uid) throw new Error('User not authenticated');
 
     try {

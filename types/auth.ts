@@ -1,5 +1,14 @@
 import { Timestamp } from 'firebase/firestore';
 
+export interface UserPreferences {
+  theme?: 'light' | 'dark' | 'system';
+  notifications?: {
+    emailNotifications: boolean;
+    desktopNotifications: boolean;
+    weeklyDigest: boolean;
+  };
+}
+
 export interface AppUser {
   uid: string;
   email: string | null;
@@ -14,6 +23,7 @@ export interface AppUser {
   createdAt: Timestamp;
   lastLogin: Timestamp;
   isNewUser?: boolean;
+  preferences?: UserPreferences;
 }
 
 export interface AuthError {
