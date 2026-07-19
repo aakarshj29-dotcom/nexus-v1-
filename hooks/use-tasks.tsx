@@ -11,6 +11,7 @@ import {
   deleteTask as deleteTaskService,
 } from '@/firebase/task-service';
 import { db, collection, query, where, onSnapshot } from '@/firebase/firestore';
+import { createNotification } from '@/firebase/notification-service';
 
 interface UseTasksOptions {
   projectId?: string;
@@ -206,7 +207,20 @@ export function useTasks(options: UseTasksOptions = {}) {
   const createTask = async (input: CreateTaskInput) => {
     if (!user?.uid) throw new Error('User must be authenticated.');
     try {
-      return await createTaskService(user.uid, input);
+      const taskId = await createTaskService(user.uid, input);
+      if (input.assigneeId && input.assigneeId !== user.uid) {
+        await createNotification({
+          recipientId: input.assigneeId,
+          senderId: user.uid,
+          senderName: user.displayName || user.username || 'Workspace Owner',
+          type: 'task_assigned',
+          title: 'New Task Assigned 📋',
+          body: `You have been assigned the task: "${input.title}"`,
+          link: '/dashboard/tasks',
+          workspaceId: activeWorkspace?.id,
+        });
+      }
+      return taskId;
     } catch (err) {
       const errorObj = err instanceof Error ? err : new Error('Failed to create task');
       setError(errorObj);
@@ -218,6 +232,18 @@ export function useTasks(options: UseTasksOptions = {}) {
     if (!user?.uid) throw new Error('User must be authenticated.');
     try {
       await updateTaskService(taskId, user.uid, input);
+      if (input.assigneeId && input.assigneeId !== user.uid) {
+        await createNotification({
+          recipientId: input.assigneeId,
+          senderId: user.uid,
+          senderName: user.displayName || user.username || 'Workspace Owner',
+          type: 'task_assigned',
+          title: 'Task Assigned to You 📋',
+          body: `You have been assigned the task: "${input.title || 'Task updated'}"`,
+          link: '/dashboard/tasks',
+          workspaceId: activeWorkspace?.id,
+        });
+      }
     } catch (err) {
       const errorObj = err instanceof Error ? err : new Error('Failed to update task');
       setError(errorObj);
