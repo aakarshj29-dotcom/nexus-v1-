@@ -1,0 +1,19 @@
+
+> nexus-foundation@0.1.0 dev
+> next dev --turbopack
+
+ ⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+   ▲ Next.js 15.5.19 (Turbopack)
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.0.2:3001
+
+ ✓ Starting...
+ ✓ Ready in 1531ms
+ ○ Compiling /dashboard/settings ...
+ ✓ Compiled /dashboard/settings in 9.8s
+ GET /dashboard/settings 200 in 11632ms
+ GET /dashboard/settings?tab=appearance 200 in 118ms
+ GET /dashboard/settings?tab=notifications 200 in 109ms
+ GET /dashboard/settings?tab=security 200 in 100ms
+ GET /dashboard/settings?tab=workspace 200 in 151ms
+ GET /dashboard/settings?tab=about 200 in 107ms
