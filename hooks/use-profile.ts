@@ -36,8 +36,8 @@ export const useProfile = () => {
           timezone: 'UTC',
           onboardingComplete: true,
           provider: 'password',
-          createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 } as any,
-          lastLogin: { seconds: Date.now() / 1000, nanoseconds: 0 } as any,
+          createdAt: { seconds: Date.now() / 1000, nanoseconds: 0 } as unknown as AppUser['createdAt'],
+          lastLogin: { seconds: Date.now() / 1000, nanoseconds: 0 } as unknown as AppUser['lastLogin'],
         };
         setProfile(initialMock);
         localStorage.setItem('mock_user_profile', JSON.stringify(initialMock));

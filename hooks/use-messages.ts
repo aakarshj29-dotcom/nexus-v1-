@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Message, LiveObjectAttachment } from '@/types/message';
+import { Message, LiveObjectAttachment, Conversation } from '@/types/message';
 import { useAuth } from './use-auth';
 import { messageService } from '@/firebase/message-service';
 
@@ -101,13 +101,13 @@ export const useMessages = (conversationId: string | null | undefined) => {
         }
 
         // Sort ascending
-        const getMs = (val: any) => {
+        const getMs = (val: unknown) => {
           if (!val) return 0;
           if (typeof val === 'string') return new Date(val).getTime();
-          if (typeof val === 'object' && 'seconds' in val) {
-            return val.seconds * 1000;
+          if (typeof val === 'object' && val !== null && 'seconds' in val) {
+            return (val as { seconds: number }).seconds * 1000;
           }
-          return new Date(val).getTime();
+          return new Date(val as string).getTime();
         };
         list.sort((a, b) => getMs(a.createdAt) - getMs(b.createdAt));
         setMessages(list);
@@ -183,8 +183,8 @@ export const useMessages = (conversationId: string | null | undefined) => {
       // Also update parent conversation's last message in conversations list
       const storedConvs = localStorage.getItem(MOCK_CONVERSATIONS_KEY);
       if (storedConvs) {
-        const convList = JSON.parse(storedConvs);
-        const updatedConvs = convList.map((c: any) => {
+        const convList = JSON.parse(storedConvs) as Conversation[];
+        const updatedConvs = convList.map((c: Conversation) => {
           if (c.id === conversationId) {
             return {
               ...c,

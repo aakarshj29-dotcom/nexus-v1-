@@ -10,7 +10,6 @@ const USERS_COLLECTION = 'users';
  */
 export const updateThemePreference = async (uid: string, theme: 'light' | 'dark' | 'system') => {
   if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
-    console.log('[MOCK] Updated theme preference to', theme);
     return;
   }
   const userRef = doc(db, USERS_COLLECTION, uid);
@@ -31,7 +30,6 @@ export const updateNotificationPreferences = async (
   }
 ) => {
   if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
-    console.log('[MOCK] Updated notification preferences to', notifications);
     return;
   }
   const userRef = doc(db, USERS_COLLECTION, uid);
@@ -45,7 +43,6 @@ export const updateNotificationPreferences = async (
  */
 export const updateTimezonePreference = async (uid: string, timezone: string) => {
   if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
-    console.log('[MOCK] Updated timezone to', timezone);
     return;
   }
   const userRef = doc(db, USERS_COLLECTION, uid);
@@ -60,7 +57,6 @@ export const updateTimezonePreference = async (uid: string, timezone: string) =>
  */
 export const changeUserPassword = async (password: string): Promise<void> => {
   if (process.env.NEXT_PUBLIC_MOCK_AUTH === 'true') {
-    console.log('[MOCK] Updated password successfully.');
     await new Promise((resolve) => setTimeout(resolve, 800));
     return;
   }

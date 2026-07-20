@@ -1,13 +1,10 @@
 import {
   collection,
   doc,
-  getDocs,
   setDoc,
   updateDoc,
   query,
-  where,
   orderBy,
-  limit,
   serverTimestamp,
   onSnapshot,
 } from 'firebase/firestore';
@@ -109,13 +106,13 @@ export const messageService = {
             });
             // Sort in-memory by createdAt
             list.sort((a, b) => {
-              const getMs = (val: any) => {
+              const getMs = (val: unknown) => {
                 if (!val) return 0;
                 if (typeof val === 'string') return new Date(val).getTime();
-                if (typeof val === 'object' && 'seconds' in val) {
-                  return val.seconds * 1000;
+                if (typeof val === 'object' && val !== null && 'seconds' in val) {
+                  return (val as { seconds: number }).seconds * 1000;
                 }
-                return new Date(val).getTime();
+                return new Date(val as string).getTime();
               };
               return getMs(a.createdAt) - getMs(b.createdAt);
             });

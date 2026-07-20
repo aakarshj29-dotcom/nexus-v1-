@@ -12,8 +12,8 @@ import { DeleteProjectDialog } from '@/components/projects/delete-project-dialog
 import { EmptyProjectState } from '@/components/projects/empty-project-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, RefreshCcw, FolderOpen } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FolderOpen } from 'lucide-react';
+import { StateError } from '@/components/ui/states';
 
 export default function ProjectsPage() {
   const {
@@ -142,18 +142,13 @@ export default function ProjectsPage() {
 
   if (error) {
     return (
-      <div className="flex-1 p-6 flex flex-col gap-4 max-w-4xl mx-auto">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error Loading Projects</AlertTitle>
-          <AlertDescription>
-            {error.message || 'Something went wrong while fetching projects.'}
-          </AlertDescription>
-        </Alert>
-        <Button onClick={() => window.location.reload()} variant="outline" className="w-fit">
-          <RefreshCcw className="mr-2 h-4 w-4" />
-          Reload Page
-        </Button>
+      <div className="flex-1 p-6 flex items-center justify-center max-w-4xl mx-auto">
+        <StateError
+          title="Error Loading Projects"
+          message={error.message || 'Something went wrong while fetching projects.'}
+          retryLabel="Reload Page"
+          onRetry={() => window.location.reload()}
+        />
       </div>
     );
   }

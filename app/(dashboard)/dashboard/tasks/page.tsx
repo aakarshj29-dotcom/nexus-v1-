@@ -11,15 +11,13 @@ import { Task, TaskStatus, TaskPriority, CreateTaskInput, UpdateTaskInput } from
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { StateError, StateEmpty, StateLoading } from '@/components/ui/states';
 import {
   LayoutGrid,
   List,
   Plus,
   Search,
   CheckSquare,
-  AlertCircle,
   X,
 } from 'lucide-react';
 
@@ -219,39 +217,26 @@ export default function TasksPage() {
 
       {/* Main tasks container */}
       {tasksError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error Loading Tasks</AlertTitle>
-          <AlertDescription>{tasksError.message}</AlertDescription>
-        </Alert>
+        <StateError
+          title="Error Loading Tasks"
+          message={tasksError.message || 'There was an issue loading your tasks.'}
+          retryLabel="Try Again"
+          onRetry={resetFilters}
+        />
       ) : tasksLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
+        <StateLoading message="Loading tasks..." />
       ) : tasks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-center py-16 px-4 border border-dashed rounded-xl bg-card min-h-[300px]">
-          <CheckSquare className="h-12 w-12 text-muted-foreground opacity-30 mb-4" />
-          <h3 className="font-semibold text-lg">No tasks found</h3>
-          <p className="text-sm text-muted-foreground mt-1.5 max-w-sm">
-            {isFiltered
+        <StateEmpty
+          title="No tasks found"
+          description={
+            isFiltered
               ? "We couldn't find any tasks matching your filters. Try relaxing your filters or search terms."
-              : "You don't have any tasks in this workspace yet. Create a task to get started!"}
-          </p>
-          <div className="mt-6 flex flex-wrap gap-2.5">
-            {isFiltered && (
-              <Button variant="outline" size="sm" onClick={resetFilters}>
-                Clear Filters
-              </Button>
-            )}
-            <Button size="sm" onClick={() => setIsCreateOpen(true)}>
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Add Your First Task
-            </Button>
-          </div>
-        </div>
+              : "You don't have any tasks in this workspace yet. Create a task to get started!"
+          }
+          icon={CheckSquare}
+          actionLabel={isFiltered ? "Clear Filters" : "Add Your First Task"}
+          onAction={isFiltered ? resetFilters : () => setIsCreateOpen(true)}
+        />
       ) : viewMode === 'kanban' ? (
         <TaskKanbanBoard
           tasks={tasks}
