@@ -5,13 +5,12 @@ import { useNotes } from '@/hooks/use-notes';
 import { useNote } from '@/hooks/use-note';
 import { NoteSidebar, NoteFilterType } from '@/components/notes/note-sidebar';
 import { NoteEditor } from '@/components/notes/note-editor';
-import { FileText, ArrowLeft } from 'lucide-react';
+import { FileText, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { deleteNote, restoreNote, permanentlyDeleteNote } from '@/firebase/note-service';
 import { useAuth } from '@/hooks/use-auth';
+import { StateError, StateEmpty } from '@/components/ui/states';
 
 export default function NotesPage() {
   const { user } = useAuth();
@@ -96,14 +95,13 @@ export default function NotesPage() {
 
   if (listError) {
     return (
-      <div className="p-4 flex flex-col gap-4">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error loading notes</AlertTitle>
-          <AlertDescription>
-            {listError.message || 'There was an issue synchronizing your notes. Please try again.'}
-          </AlertDescription>
-        </Alert>
+      <div className="p-4 flex items-center justify-center h-[calc(100vh-4rem)]">
+        <StateError
+          title="Error loading notes"
+          message={listError.message || 'There was an issue synchronizing your notes. Please try again.'}
+          retryLabel="Try Again"
+          onRetry={() => window.location.reload()}
+        />
       </div>
     );
   }
@@ -178,19 +176,14 @@ export default function NotesPage() {
             </div>
           )
         ) : (
-          <div className="flex h-full flex-col items-center justify-center p-8 text-center text-muted-foreground gap-3">
-            <div className="flex aspect-square size-12 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-              <FileText className="h-6 w-6 opacity-40" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-semibold">No note selected</p>
-              <p className="text-xs max-w-xs mx-auto">
-                Select a note from the list, or create a brand new one to begin editing.
-              </p>
-            </div>
-            <Button onClick={handleCreateNote} size="sm">
-              Create Note
-            </Button>
+          <div className="flex h-full flex-col items-center justify-center p-8">
+            <StateEmpty
+              title="No note selected"
+              description="Select a note from the list, or create a brand new one to begin editing."
+              icon={FileText}
+              actionLabel="Create Note"
+              onAction={handleCreateNote}
+            />
           </div>
         )}
       </div>

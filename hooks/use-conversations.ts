@@ -98,9 +98,9 @@ export const useConversations = () => {
         const filtered = list.filter((c) => c.workspaceId === activeWorkspace.id);
 
         // Sort by last active timestamp (descending)
-        const getMs = (val: any) => {
+        const getMs = (val: unknown) => {
           if (!val) return 0;
-          return new Date(val).getTime();
+          return new Date(val as string).getTime();
         };
 
         filtered.sort((a, b) => {
@@ -130,13 +130,13 @@ export const useConversations = () => {
       activeWorkspace.id,
       (list) => {
         // Sort by last active timestamp (descending)
-        const getMs = (val: any) => {
+        const getMs = (val: unknown) => {
           if (!val) return 0;
           if (typeof val === 'string') return new Date(val).getTime();
-          if (typeof val === 'object' && 'seconds' in val) {
-            return val.seconds * 1000;
+          if (typeof val === 'object' && val !== null && 'seconds' in val) {
+            return (val as { seconds: number }).seconds * 1000;
           }
-          return new Date(val).getTime();
+          return new Date(val as string).getTime();
         };
 
         const sorted = [...list].sort((a, b) => {
@@ -148,13 +148,6 @@ export const useConversations = () => {
         setConversations(sorted);
 
         // Keep active conversation reference current
-        if (activeConversation) {
-          const currentActive = sorted.find((c) => c.id === activeConversation.id);
-          if (currentActive) {
-            setActiveConversation(currentActive);
-          }
-        }
-
         setLoading(false);
       },
       (err) => {
@@ -165,6 +158,16 @@ export const useConversations = () => {
 
     return () => unsubscribe();
   }, [user?.uid, activeWorkspace?.id, isMock]);
+
+  // Keep active conversation reference current as conversation list changes
+  useEffect(() => {
+    if (activeConversation && conversations.length > 0) {
+      const currentActive = conversations.find((c) => c.id === activeConversation.id);
+      if (currentActive && JSON.stringify(currentActive) !== JSON.stringify(activeConversation)) {
+        setActiveConversation(currentActive);
+      }
+    }
+  }, [conversations, activeConversation]);
 
   const createConversation = async (
     type: ConversationType,

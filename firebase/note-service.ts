@@ -2,13 +2,9 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
   setDoc,
   updateDoc,
   deleteDoc,
-  query,
-  where,
-  orderBy,
   serverTimestamp,
 } from './firestore';
 import { db } from './firestore';
@@ -83,7 +79,7 @@ export async function updateNote(
   userId: string,
   input: UpdateNoteInput
 ): Promise<void> {
-  const note = await getNote(noteId, userId);
+  await getNote(noteId, userId);
 
   if (input.title !== undefined) {
     validateNoteData(input.title);
