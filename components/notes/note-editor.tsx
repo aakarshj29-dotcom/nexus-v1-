@@ -47,7 +47,10 @@ export function NoteEditor({ note, onUpdate, onDelete, onRestore, isSaving }: No
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        link: false,
+        underline: false,
+      }),
       Underline,
       Link.configure({
         openOnClick: false,
