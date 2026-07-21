@@ -19,6 +19,40 @@ import {
 
 const EVENTS_COLLECTION = 'events';
 
+/**
+ * Sanitizes input payloads to ensure no undefined fields are passed to Firestore.
+ * Standard optional fields (like description and location) are default-fallback initialized.
+ * All other undefined fields are either removed or converted safely.
+ */
+function sanitizeEventData(data: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+
+  // Define default values for standard optional fields to prevent them being undefined.
+  const defaults: Record<string, unknown> = {
+    description: "",
+    location: "",
+    attendees: [],
+    color: "",
+    notes: "",
+    recurrence: "",
+    reminder: "",
+    projectId: "",
+    workspaceId: "",
+  };
+
+  // Merge defaults first, then apply given fields
+  const merged: Record<string, unknown> = { ...defaults, ...data };
+
+  for (const key of Object.keys(merged)) {
+    const val = merged[key];
+    if (val !== undefined) {
+      result[key] = val;
+    }
+  }
+
+  return result;
+}
+
 export const calendarService = {
   /**
    * Creates a new calendar event for a user.
@@ -31,19 +65,21 @@ export const calendarService = {
     const eventsRef = collection(db, EVENTS_COLLECTION);
     const now = new Date().toISOString();
 
-    const eventData = {
+    const rawEventData = {
       ...input,
       ownerId: userId,
       createdAt: now,
       updatedAt: now,
     };
 
+    const eventData = sanitizeEventData(rawEventData);
+
     const docRef = await addDoc(eventsRef, eventData);
 
     return {
       id: docRef.id,
       ...eventData,
-    };
+    } as CalendarEvent;
   },
 
   /**
@@ -84,10 +120,43 @@ export const calendarService = {
     }
 
     const now = new Date().toISOString();
-    await updateDoc(docRef, {
+
+    // Dynamically build update payload to preserve any and all properties passed in,
+    // while stripping out any properties that are undefined.
+    // Standard optional string/array fields are converted to safe defaults if they are undefined or null.
+    const updatePayload: Record<string, unknown> = {
       ...input,
       updatedAt: now,
-    });
+    };
+
+    // Safe fallbacks for known optional fields if they are explicitly passed as undefined or null
+    const defaults: Record<string, unknown> = {
+      description: "",
+      location: "",
+      attendees: [],
+      color: "",
+      notes: "",
+      recurrence: "",
+      reminder: "",
+      projectId: "",
+      workspaceId: "",
+    };
+
+    for (const key of Object.keys(updatePayload)) {
+      if (updatePayload[key] === undefined) {
+        if (key in defaults) {
+          updatePayload[key] = defaults[key];
+        } else {
+          delete updatePayload[key];
+        }
+      } else if (updatePayload[key] === null) {
+        if (key in defaults) {
+          updatePayload[key] = defaults[key];
+        }
+      }
+    }
+
+    await updateDoc(docRef, updatePayload);
   },
 
   /**
