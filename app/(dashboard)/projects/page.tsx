@@ -35,6 +35,17 @@ export default function ProjectsPage() {
 
   // Dialog State
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('create') === 'true') {
+        setIsCreateOpen(true);
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+  }, []);
+
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
   const [selectedProject, setSelectedProject] = React.useState<Project | null>(null);

@@ -7,17 +7,39 @@
    - Network:      http://192.168.0.2:3000
 
  ✓ Starting...
- ✓ Ready in 1586ms
+ ✓ Ready in 1469ms
  ○ Compiling / ...
- ✓ Compiled / in 7.2s
- HEAD / 200 in 8312ms
+ ✓ Compiled / in 7.8s
+ HEAD / 200 in 8874ms
  ○ Compiling /login ...
- ✓ Compiled /login in 1228ms
- GET /login 200 in 1616ms
+ ✓ Compiled /login in 1241ms
+ GET /login 200 in 1576ms
  ○ Compiling /dashboard ...
- ✓ Compiled /dashboard in 5.5s
- GET /dashboard 200 in 5782ms
- GET /dashboard 200 in 231ms
+ ✓ Compiled /dashboard in 5.3s
+ GET /dashboard 200 in 5492ms
+ GET /login 200 in 304ms
+ GET /dashboard 200 in 143ms
+ GET /login 200 in 375ms
+ GET /dashboard 200 in 180ms
+ GET /login 200 in 304ms
+ GET /dashboard 200 in 176ms
+ GET /dashboard 200 in 470ms
+ ○ Compiling /projects ...
+ ✓ Compiled /projects in 2.7s
+ GET /projects?create=true 200 in 2905ms
+ GET /dashboard 200 in 370ms
+ ○ Compiling /dashboard/tasks ...
+ ✓ Compiled /dashboard/tasks in 1254ms
+ GET /dashboard/tasks?create=true 200 in 1401ms
+ GET /dashboard 200 in 261ms
+ ○ Compiling /dashboard/workspace ...
+ ✓ Compiled /dashboard/workspace in 1137ms
+ GET /dashboard/workspace?invite=true 200 in 1244ms
+ GET /dashboard 200 in 177ms
+ ○ Compiling /dashboard/messages ...
+ ✓ Compiled /dashboard/messages in 1096ms
+ GET /dashboard/messages?create=true 200 in 1197ms
+ GET /dashboard 200 in 260ms
  ○ Compiling /dashboard/notes ...
- ✓ Compiled /dashboard/notes in 3.2s
- GET /dashboard/notes 200 in 4031ms
+ ✓ Compiled /dashboard/notes in 2.2s
+ GET /dashboard/notes?create=true 200 in 2340ms

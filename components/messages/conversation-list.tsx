@@ -27,6 +27,16 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('create') === 'true') {
+        setDialogOpen(true);
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+  }, []);
+
   const getConversationDetails = (conv: Conversation) => {
     if (conv.type === 'direct') {
       const otherId = conv.memberIds.find((id) => id !== user?.uid);
