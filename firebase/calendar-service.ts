@@ -19,6 +19,97 @@ import {
 
 const EVENTS_COLLECTION = 'events';
 
+/**
+ * Sanitizes input data before writing to Firestore.
+ * Removes only 'undefined' values.
+ * Preserves null, false, 0, empty strings, empty arrays, and other legitimate values.
+ * Safer than Record<string, any> and never mutates the original object.
+ */
+export function sanitizeEventData<T extends Record<string, unknown>>(data: T): Partial<T> {
+  const sanitized: Record<string, unknown> = {};
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const value = data[key];
+      if (value !== undefined) {
+        sanitized[key] = value;
+      }
+    }
+  }
+  return sanitized as Partial<T>;
+}
+
+/**
+ * Validates the required fields of a calendar event during creation.
+ * All required fields must exist, be valid non-empty strings, and end time must be after start time.
+ */
+export function validateCreateEventData(data: {
+  ownerId?: string;
+  title?: string;
+  startTime?: string;
+  endTime?: string;
+}) {
+  if (!data.ownerId || data.ownerId.trim() === '') {
+    throw new Error('Owner ID is required.');
+  }
+  if (!data.title || data.title.trim() === '') {
+    throw new Error('Event title is required.');
+  }
+  if (!data.startTime || data.startTime.trim() === '') {
+    throw new Error('Event start time is required.');
+  }
+  if (!data.endTime || data.endTime.trim() === '') {
+    throw new Error('Event end time is required.');
+  }
+
+  const start = new Date(data.startTime);
+  const end = new Date(data.endTime);
+  if (isNaN(start.getTime())) {
+    throw new Error('Invalid start time format.');
+  }
+  if (isNaN(end.getTime())) {
+    throw new Error('Invalid end time format.');
+  }
+  if (end <= start) {
+    throw new Error('Event end time must be after the start time.');
+  }
+}
+
+/**
+ * Validates specified fields of a calendar event during updates.
+ * Supports partial validation for updated fields, and ensures the prospective merged document is valid.
+ */
+export function validateUpdateEventData(
+  existingEvent: { ownerId: string; title: string; startTime: string; endTime: string },
+  updates: { title?: string; startTime?: string; endTime?: string }
+) {
+  // 1. If fields are specified in updates, validate them individually if they are empty
+  if (updates.title !== undefined && (!updates.title || updates.title.trim() === '')) {
+    throw new Error('Event title cannot be empty.');
+  }
+  if (updates.startTime !== undefined && (!updates.startTime || updates.startTime.trim() === '')) {
+    throw new Error('Event start time cannot be empty.');
+  }
+  if (updates.endTime !== undefined && (!updates.endTime || updates.endTime.trim() === '')) {
+    throw new Error('Event end time cannot be empty.');
+  }
+
+  // 2. Validate chronology on prospective merged result
+  const prospectiveStartTime = updates.startTime !== undefined ? updates.startTime : existingEvent.startTime;
+  const prospectiveEndTime = updates.endTime !== undefined ? updates.endTime : existingEvent.endTime;
+
+  const start = new Date(prospectiveStartTime);
+  const end = new Date(prospectiveEndTime);
+  if (isNaN(start.getTime())) {
+    throw new Error('Invalid start time format.');
+  }
+  if (isNaN(end.getTime())) {
+    throw new Error('Invalid end time format.');
+  }
+  if (end <= start) {
+    throw new Error('Event end time must be after the start time.');
+  }
+}
+
 export const calendarService = {
   /**
    * Creates a new calendar event for a user.
@@ -38,12 +129,18 @@ export const calendarService = {
       updatedAt: now,
     };
 
-    const docRef = await addDoc(eventsRef, eventData);
+    // Validate create payload
+    validateCreateEventData(eventData);
+
+    // Sanitize payload to strip undefined fields
+    const sanitizedData = sanitizeEventData(eventData as unknown as Record<string, unknown>);
+
+    const docRef = await addDoc(eventsRef, sanitizedData);
 
     return {
       id: docRef.id,
-      ...eventData,
-    };
+      ...sanitizedData,
+    } as unknown as CalendarEvent;
   },
 
   /**
@@ -83,11 +180,16 @@ export const calendarService = {
       throw new Error('You are not authorized to update this event.');
     }
 
+    // Validate updates with respect to existing data
+    validateUpdateEventData(eventData, input);
+
     const now = new Date().toISOString();
-    await updateDoc(docRef, {
+    const sanitizedInput = sanitizeEventData({
       ...input,
       updatedAt: now,
-    });
+    } as Record<string, unknown>);
+
+    await updateDoc(docRef, sanitizedInput);
   },
 
   /**
