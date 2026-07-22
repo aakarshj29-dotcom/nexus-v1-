@@ -19,6 +19,62 @@ import {
 
 const EVENTS_COLLECTION = 'events';
 
+/**
+ * Sanitizes input data before writing to Firestore.
+ * Removes only 'undefined' values.
+ * Preserves null, false, 0, empty strings, empty arrays, and other legitimate values.
+ */
+export function sanitizeEventData<T extends Record<string, any>>(data: T): Partial<T> {
+  const sanitized: Record<string, any> = {};
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const value = data[key];
+      if (value !== undefined) {
+        sanitized[key] = value;
+      }
+    }
+  }
+  return sanitized as Partial<T>;
+}
+
+/**
+ * Validates the required fields of a calendar event.
+ */
+export function validateEventData(data: {
+  title?: string;
+  startTime?: string;
+  endTime?: string;
+  ownerId?: string;
+}) {
+  if (data.ownerId !== undefined && (!data.ownerId || data.ownerId.trim() === '')) {
+    throw new Error('Owner ID is required.');
+  }
+  if (data.title !== undefined && (!data.title || data.title.trim() === '')) {
+    throw new Error('Event title is required.');
+  }
+  if (data.startTime !== undefined && (!data.startTime || data.startTime.trim() === '')) {
+    throw new Error('Event start time is required.');
+  }
+  if (data.endTime !== undefined && (!data.endTime || data.endTime.trim() === '')) {
+    throw new Error('Event end time is required.');
+  }
+
+  // If both start and end time are defined, validate their order
+  if (data.startTime && data.endTime) {
+    const start = new Date(data.startTime);
+    const end = new Date(data.endTime);
+    if (isNaN(start.getTime())) {
+      throw new Error('Invalid start time format.');
+    }
+    if (isNaN(end.getTime())) {
+      throw new Error('Invalid end time format.');
+    }
+    if (end <= start) {
+      throw new Error('Event end time must be after the start time.');
+    }
+  }
+}
+
 export const calendarService = {
   /**
    * Creates a new calendar event for a user.
@@ -38,12 +94,16 @@ export const calendarService = {
       updatedAt: now,
     };
 
-    const docRef = await addDoc(eventsRef, eventData);
+    // Validate and sanitize the payload
+    validateEventData(eventData);
+    const sanitizedData = sanitizeEventData(eventData);
+
+    const docRef = await addDoc(eventsRef, sanitizedData);
 
     return {
       id: docRef.id,
-      ...eventData,
-    };
+      ...sanitizedData,
+    } as CalendarEvent;
   },
 
   /**
@@ -83,11 +143,19 @@ export const calendarService = {
       throw new Error('You are not authorized to update this event.');
     }
 
+    const mergedData = {
+      ...eventData,
+      ...input,
+    };
+    validateEventData(mergedData);
+
     const now = new Date().toISOString();
-    await updateDoc(docRef, {
+    const sanitizedInput = sanitizeEventData({
       ...input,
       updatedAt: now,
     });
+
+    await updateDoc(docRef, sanitizedInput);
   },
 
   /**
