@@ -21,6 +21,7 @@ export default function NotesPage() {
   const [activeFilter, setActiveFilter] = useState<NoteFilterType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileDetail, setShowMobileDetail] = useState(false);
+  const hasTriggeredRef = React.useRef(false);
 
   // Debounced Auto-save implementation
   const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -59,6 +60,24 @@ export default function NotesPage() {
       console.error('Failed to create note:', err);
     }
   };
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && !listLoading && !hasTriggeredRef.current) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('create') === 'true') {
+        hasTriggeredRef.current = true;
+        window.history.replaceState(null, '', window.location.pathname);
+        createNote()
+          .then((newId) => {
+            setSelectedNoteId(newId);
+            setShowMobileDetail(true);
+          })
+          .catch((err) => {
+            console.error('Failed to create note:', err);
+          });
+      }
+    }
+  }, [listLoading, createNote]);
 
   const handleDeleteNote = async () => {
     if (!selectedNoteId || !user?.uid) return;

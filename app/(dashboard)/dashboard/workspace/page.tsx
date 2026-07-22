@@ -83,6 +83,24 @@ export default function WorkspaceSettingsPage() {
     }
   }, [activeWorkspace]);
 
+  // Handle client-side focus and scroll for workspace invitations
+  React.useEffect(() => {
+    if (activeWorkspace && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('invite') === 'true') {
+        const timer = setTimeout(() => {
+          const input = document.getElementById('invite-email');
+          if (input) {
+            input.focus();
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          window.history.replaceState(null, '', window.location.pathname);
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [activeWorkspace]);
+
   if (!activeWorkspace) {
     return (
       <div className="flex flex-1 items-center justify-center p-8">

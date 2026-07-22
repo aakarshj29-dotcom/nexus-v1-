@@ -10,14 +10,15 @@ import {
   FilePlus,
   Zap
 } from 'lucide-react';
+import Link from 'next/link';
 
 export function QuickActions() {
   const actions = [
-    { label: 'New Project', icon: FolderPlus, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-    { label: 'Add Task', icon: Plus, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { label: 'Invite Member', icon: UserPlus, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-    { label: 'New Message', icon: MessageSquarePlus, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-    { label: 'Create Note', icon: FilePlus, color: 'text-pink-500', bg: 'bg-pink-500/10' },
+    { label: 'New Project', icon: FolderPlus, color: 'text-blue-500', bg: 'bg-blue-500/10', href: '/projects?create=true' },
+    { label: 'Add Task', icon: Plus, color: 'text-emerald-500', bg: 'bg-emerald-500/10', href: '/dashboard/tasks?create=true' },
+    { label: 'Invite Member', icon: UserPlus, color: 'text-purple-500', bg: 'bg-purple-500/10', href: '/dashboard/workspace?invite=true' },
+    { label: 'New Message', icon: MessageSquarePlus, color: 'text-orange-500', bg: 'bg-orange-500/10', href: '/dashboard/messages?create=true' },
+    { label: 'Create Note', icon: FilePlus, color: 'text-pink-500', bg: 'bg-pink-500/10', href: '/dashboard/notes?create=true' },
   ];
 
   return (
@@ -31,6 +32,7 @@ export function QuickActions() {
           <Button
             key={action.label}
             variant="ghost"
+            render={<Link href={action.href} />}
             className="flex h-auto flex-col items-center justify-center gap-2 rounded-xl border border-transparent p-3 text-center hover:border-border hover:bg-muted/50"
           >
             <div className={`rounded-lg p-2 ${action.bg} ${action.color}`}>
